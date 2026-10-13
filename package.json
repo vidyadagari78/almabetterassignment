@@ -1,0 +1,30 @@
+{
+  "name": "almabetter-ai-evaluation-platform",
+  "version": "1.0.0",
+  "description": "AI-Powered Project Evaluation Platform - SDE-II Backend Architecture Reference Implementation",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node tests/run-all-tests.js"
+  },
+  "keywords": [
+    "system-design",
+    "sde-2",
+    "ai-evaluation",
+    "llm",
+    "rag",
+    "async-pipeline",
+    "rubrics"
+  ],
+  "author": "SDE-II Candidate",
+  "license": "MIT",
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "multer": "^1.4.5-lts.1",
+    "uuid": "^11.1.0"
+  }
+}

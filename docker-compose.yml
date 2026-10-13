@@ -1,0 +1,47 @@
+services:
+  # 1. Core API & Evaluation Engine Service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: almabetter_evaluation_api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - REDIS_URL=redis://redis:6379
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-mock}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-mock}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - platform_network
+
+  # 2. Redis Cache & Distributed Lock Store (Redlock)
+  redis:
+    image: redis:7-alpine
+    container_name: almabetter_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass evaluation_redis_secret
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "evaluation_redis_secret", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - redis_data:/data
+    networks:
+      - platform_network
+
+networks:
+  platform_network:
+    driver: bridge
+
+volumes:
+  redis_data:
+    driver: local
