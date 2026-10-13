@@ -38,6 +38,13 @@ app.get("/assignment.png", (req, res) => {
   res.sendFile(path.join(__dirname, "../assignment.png"));
 });
 
+// Prometheus Observability Telemetry Endpoint
+const metricsService = require("./services/metrics.service");
+app.get("/metrics", (req, res) => {
+  res.setHeader("Content-Type", "text/plain; version=0.0.4");
+  return res.send(metricsService.toPrometheusText());
+});
+
 // Liveness & Readiness Probes (for AWS ALB / Kubernetes)
 app.get("/api/v1/health", (req, res) => {
   return res.json({
@@ -47,6 +54,11 @@ app.get("/api/v1/health", (req, res) => {
     activeWorkers: 4,
     queueCapacity: "HEALTHY"
   });
+});
+
+// OpenAPI 3.0 Documentation Endpoint
+app.get("/api/v1/docs", (req, res) => {
+  res.sendFile(path.join(__dirname, "docs/openapi.json"));
 });
 
 // Mount Routes

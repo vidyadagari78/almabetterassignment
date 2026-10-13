@@ -1,0 +1,215 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "AlmaBetter AI-Powered Project Evaluation Engine API",
+    "version": "1.0.0",
+    "description": "Production REST API for high-throughput automated and human-in-the-loop student project evaluations."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api/v1",
+      "description": "Local Development Server"
+    },
+    {
+      "url": "https://api.evaluations.almabetter.com/api/v1",
+      "description": "Production AWS Environment"
+    }
+  ],
+  "paths": {
+    "/submissions": {
+      "post": {
+        "summary": "Create Submission Record",
+        "description": "Initializes a submission record with SHA-256 idempotency fingerprint.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["assignmentId", "submissionType"],
+                "properties": {
+                  "assignmentId": { "type": "string", "format": "uuid" },
+                  "submissionType": { "type": "string", "enum": ["GITHUB_REPO", "ZIP_ARCHIVE", "PDF_DOCUMENT", "HYBRID"] },
+                  "githubRepoUrl": { "type": "string", "format": "uri" },
+                  "commitHash": { "type": "string" },
+                  "liveUrl": { "type": "string", "format": "uri" },
+                  "notes": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Submission created successfully" },
+          "400": { "description": "Validation error" }
+        }
+      }
+    },
+    "/submissions/{id}/upload-url": {
+      "post": {
+        "summary": "Get Presigned S3 Upload URL",
+        "description": "Generates a pre-authenticated S3 multipart URL for direct client binary uploads (up to 1GB).",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["fileName", "fileSizeBytes"],
+                "properties": {
+                  "fileName": { "type": "string" },
+                  "fileSizeBytes": { "type": "integer", "maximum": 1073741824 },
+                  "mimeType": { "type": "string", "default": "application/zip" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Presigned URL returned" },
+          "400": { "description": "File size exceeds 1GB limit" }
+        }
+      }
+    },
+    "/evaluations/submission/{id}": {
+      "post": {
+        "summary": "Trigger Evaluation Job",
+        "description": "Enqueues asynchronous evaluation pipeline via SQS/BullMQ with distributed locking.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "Idempotency-Key", "in": "header", "required": false, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "rubricId": { "type": "string", "default": "rub_default_mern_v1" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "Job enqueued asynchronously" },
+          "200": { "description": "Existing job returned via idempotency" }
+        }
+      }
+    },
+    "/evaluations/{jobId}/status": {
+      "get": {
+        "summary": "Get Evaluation Job Status",
+        "parameters": [
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Job status and progress percentage" }
+        }
+      }
+    },
+    "/evaluations/{jobId}/result": {
+      "get": {
+        "summary": "Get Evaluation Result & Breakdown",
+        "parameters": [
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Authoritative evaluation result with evidence citations" },
+          "202": { "description": "Evaluation still processing" }
+        }
+      }
+    },
+    "/evaluations/{jobId}/human-review": {
+      "post": {
+        "summary": "Request Human Review",
+        "parameters": [
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["studentNotes"],
+                "properties": {
+                  "reason": { "type": "string", "default": "DISPUTED_SCORE" },
+                  "studentNotes": { "type": "string" },
+                  "disputedDimensionKey": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": { "description": "Dispute ticket enqueued for mentor review" }
+        }
+      }
+    },
+    "/evaluations/{jobId}/decision": {
+      "post": {
+        "summary": "Mentor Override / Approval Decision",
+        "parameters": [
+          { "name": "jobId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["decision"],
+                "properties": {
+                  "decision": { "type": "string", "enum": ["APPROVED_AS_IS", "OVERRIDE_SCORE", "REJECT_DISPUTE"] },
+                  "revisedDimensionScores": { "type": "object" },
+                  "evaluatorComments": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Decision published and score adjusted" }
+        }
+      }
+    },
+    "/rubrics": {
+      "get": {
+        "summary": "List All Active Rubrics",
+        "responses": {
+          "200": { "description": "Array of rubrics and dynamic criteria" }
+        }
+      }
+    },
+    "/rubrics/{id}": {
+      "put": {
+        "summary": "Update Dynamic Rubric Weights",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "criteria": { "type": "array" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Rubric updated successfully" },
+          "400": { "description": "Sum of criteria weights must equal 100%" }
+        }
+      }
+    }
+  }
+}

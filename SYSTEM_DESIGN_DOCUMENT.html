@@ -1436,6 +1436,69 @@ timeline
 <li><strong>Hybrid Tiering:</strong> Use high-throughput low-cost models (<code>gpt-4o-mini</code> or Claude 3.5 Haiku) for file summaries ($80%$ of tokens) and reserve Claude 3.5 Sonnet only for final rubric synthesis ($20%$ of tokens). This reduces cost from $$1.20$ to $$0.28$ per submission.</li>
 </ul>
 </li>
+</ol>
+<h4>9.4 Comprehensive Cost &amp; Infrastructure Capacity Model (at 10,000 Submissions/Day)</h4>
+<table>
+<thead>
+<tr>
+<th align="left">Infrastructure Resource</th>
+<th align="left">Dimension / Sizing</th>
+<th align="left">Pricing Basis (AWS us-east-1)</th>
+<th align="left">Estimated Monthly Cost</th>
+<th align="left">Optimization Mechanism</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>Object Storage (S3)</strong></td>
+<td align="left">30 TB raw archives / month</td>
+<td align="left">$0.023 / GB for 30 days; then Glacier Deep Archive ($0.00099/GB)</td>
+<td align="left"><strong>$690 $\to$ $30/mo</strong></td>
+<td align="left">Automated S3 Lifecycle transitions archives to Glacier after 30 days.</td>
+</tr>
+<tr>
+<td align="left"><strong>LLM Token Processing</strong></td>
+<td align="left">40k LLM calls/day (4 agents $\times$ 10k submissions)</td>
+<td align="left">$3.00/M input tokens (Sonnet) vs $0.15/M (Haiku)</td>
+<td align="left"><strong>$8,400 / month</strong></td>
+<td align="left"><strong>Hierarchical Tiering:</strong> Fast models handle file summaries ($80%$ tokens); Sonnet evaluates synthesized rubric ($20%$).</td>
+</tr>
+<tr>
+<td align="left"><strong>ECS Fargate Compute</strong></td>
+<td align="left">Baseline 5 workers; burst to 75 workers (4 hrs/day)</td>
+<td align="left">$0.04048 / vCPU-hr, Fargate Spot (70% discount)</td>
+<td align="left"><strong>$480 / month</strong></td>
+<td align="left">KEDA scales down to baseline outside deadline peaks; utilizes Fargate Spot.</td>
+</tr>
+<tr>
+<td align="left"><strong>Aurora PostgreSQL</strong></td>
+<td align="left">Primary <code>db.r6g.xlarge</code> + 2 Read Replicas</td>
+<td align="left">$0.52 / hr per instance + $0.20/GB storage</td>
+<td align="left"><strong>$1,180 / month</strong></td>
+<td align="left">PgBouncer connection pooling eliminates connection memory thrashing.</td>
+</tr>
+<tr>
+<td align="left"><strong>ElastiCache Redis</strong></td>
+<td align="left"><code>cache.m6g.large</code> (Multi-AZ Cluster)</td>
+<td align="left">$0.136 / hr per node</td>
+<td align="left"><strong>$195 / month</strong></td>
+<td align="left">Ephemeral TTLs for locks (30s) and job progress caches (24h).</td>
+</tr>
+<tr>
+<td align="left"><strong>SQS &amp; Networking</strong></td>
+<td align="left">2.5M SQS requests/month + ALB bandwidth</td>
+<td align="left">$0.40 / M requests + ALB data transfer</td>
+<td align="left"><strong>$110 / month</strong></td>
+<td align="left">Batching SQS messages in chunks of 10.</td>
+</tr>
+<tr>
+<td align="left"><strong>Total Platform Infrastructure</strong></td>
+<td align="left">Full 10,000 daily submission capacity</td>
+<td align="left">Comprehensive Cloud &amp; AI Footprint</td>
+<td align="left"><strong>~$11,055 / month</strong></td>
+<td align="left"><strong>Total cost per student evaluation: ~$0.037 (under 4 cents!)</strong></td>
+</tr>
+</tbody></table>
+<ol start="5">
 <li><strong>Backpressure &amp; Graceful Degradation:</strong><ul>
 <li>If SQS depth exceeds 500 messages, the system activates graceful degradation: non-urgent static code analysis runs with lower thread priority, and client dashboards display dynamic ETA indicators based on queue depth.</li>
 </ul>

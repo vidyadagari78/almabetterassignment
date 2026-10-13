@@ -1,5 +1,6 @@
 /**
  * Frontend Application Controller for AlmaBetter AI Evaluation Platform
+ * Supports Multi-Tab Navigation, Scenario Execution, Security Sandbox, and Metrics
  */
 
 const API_BASE = "/api/v1";
@@ -37,13 +38,36 @@ const SCENARIOS = {
 
 let currentJobId = null;
 let pollInterval = null;
+let mermaidInitialized = false;
 
 document.addEventListener("DOMContentLoaded", () => {
   renderScenarios();
   setupEventListeners();
   loadDefaultScenario("standard");
+  fetchLivePrometheusMetrics();
 });
 
+// --- Tab Navigation ---
+function switchTab(tabKey) {
+  document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+
+  const targetTab = document.getElementById(`tab-${tabKey}`);
+  if (targetTab) targetTab.classList.add("active");
+
+  const activeBtn = Array.from(document.querySelectorAll(".tab-btn")).find(btn => btn.getAttribute("onclick").includes(tabKey));
+  if (activeBtn) activeBtn.classList.add("active");
+
+  if (tabKey === "architecture" && !mermaidInitialized && window.mermaid) {
+    mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+    mermaidInitialized = true;
+  }
+  if (tabKey === "telemetry") {
+    fetchLivePrometheusMetrics();
+  }
+}
+
+// --- Scenarios Rendering ---
 function renderScenarios() {
   const container = document.getElementById("scenario-container");
   if (!container) return;
@@ -80,6 +104,7 @@ function setupEventListeners() {
   document.getElementById("btn-mentor-override").addEventListener("click", handleMentorOverride);
 }
 
+// --- Evaluation Execution ---
 async function handleStartEvaluation() {
   const repo = document.getElementById("input-repo").value.trim();
   const type = document.getElementById("input-type").value;
@@ -127,7 +152,6 @@ async function handleStartEvaluation() {
     currentJobId = evalData.data.jobId;
     document.getElementById("live-job-id").textContent = currentJobId;
 
-    // 3. Connect to live updates via SSE stream or Polling
     startPollingJob(currentJobId);
   } catch (err) {
     alert("Error: " + err.message);
@@ -210,7 +234,6 @@ function renderEvaluationResults(evalData) {
   resultsSection.style.display = "block";
   resultsSection.scrollIntoView({ behavior: "smooth" });
 
-  // Score Hero
   document.getElementById("final-score-val").textContent = `${evalData.overallScore} / 100`;
   document.getElementById("confidence-val").textContent = `${Math.round(evalData.confidenceScore * 100)}%`;
 
@@ -225,7 +248,6 @@ function renderEvaluationResults(evalData) {
     document.getElementById("human-review-panel").style.display = "none";
   }
 
-  // Dimensions Breakdown
   const dimContainer = document.getElementById("dimensions-container");
   dimContainer.innerHTML = (evalData.breakdown || []).map(d => {
     const pct = Math.min(100, (d.rawScore / 10.0) * 100);
@@ -246,7 +268,6 @@ function renderEvaluationResults(evalData) {
     `;
   }).join("");
 
-  // Strengths & Improvements
   document.getElementById("strengths-list").innerHTML = (evalData.keyStrengths || []).map(s => `<li>${s}</li>`).join("");
   document.getElementById("improvements-list").innerHTML = (evalData.areasForImprovement || []).map(i => `<li>${i}</li>`).join("");
 }
@@ -279,5 +300,57 @@ async function handleMentorOverride() {
     fetchAndRenderResults(currentJobId);
   } catch (e) {
     alert("Override error: " + e.message);
+  }
+}
+
+// --- Security Sandbox Interactive Tests ---
+function testPromptInjectionScan() {
+  const text = document.getElementById("sec-input-prompt").value;
+  const out = document.getElementById("sec-output-prompt");
+
+  const patterns = [
+    /ignore\s+(all\s+)?(previous|prior)\s+instructions/i,
+    /give\s+(me\s+)?(100|full\s+marks|10\/10)/i,
+    /system\s+prompt\s+override/i
+  ];
+
+  let detected = false;
+  let matches = [];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) {
+      detected = true;
+      matches.push(m[0]);
+    }
+  }
+
+  if (detected) {
+    out.innerHTML = `<div class="alert-box alert-danger"><strong>Threat Intercepted:</strong> Quarantined adversarial injection pattern: "${matches.join(', ')}". Model prompt boundaries protected.</div>`;
+  } else {
+    out.innerHTML = `<div class="alert-box alert-success"><strong>Clean:</strong> No prompt injection patterns detected in submitted text.</div>`;
+  }
+}
+
+function testPathTraversalScan() {
+  const targetPath = document.getElementById("sec-input-path").value;
+  const out = document.getElementById("sec-output-path");
+
+  if (targetPath.includes("..") || targetPath.startsWith("/") || targetPath.startsWith("\\")) {
+    out.innerHTML = `<div class="alert-box alert-danger"><strong>Threat Intercepted:</strong> Path traversal attempt blocked! File "${targetPath}" rejected before disk extraction.</div>`;
+  } else {
+    out.innerHTML = `<div class="alert-box alert-success"><strong>Clean:</strong> Path is safe and contained within extraction sandbox directory.</div>`;
+  }
+}
+
+// --- Telemetry Fetcher ---
+async function fetchLivePrometheusMetrics() {
+  const box = document.getElementById("prometheus-stream-box");
+  if (!box) return;
+  try {
+    const res = await fetch("/metrics");
+    const text = await res.text();
+    box.textContent = text;
+  } catch (e) {
+    box.textContent = "Metrics unavailable: " + e.message;
   }
 }

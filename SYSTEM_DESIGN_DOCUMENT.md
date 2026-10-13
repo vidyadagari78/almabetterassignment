@@ -1031,6 +1031,19 @@ timeline
 4. **Cost Optimization & LLM Token Economics:**
    * **Semantic Prompt Caching:** Standard project templates (e.g. AlmaBetter standard MERN starter repo) produce identical AST summaries. Using Redis semantic caching avoids redundant evaluations.
    * **Hybrid Tiering:** Use high-throughput low-cost models (`gpt-4o-mini` or Claude 3.5 Haiku) for file summaries ($80\%$ of tokens) and reserve Claude 3.5 Sonnet only for final rubric synthesis ($20\%$ of tokens). This reduces cost from $\$1.20$ to $\$0.28$ per submission.
+
+#### 9.4 Comprehensive Cost & Infrastructure Capacity Model (at 10,000 Submissions/Day)
+
+| Infrastructure Resource | Dimension / Sizing | Pricing Basis (AWS us-east-1) | Estimated Monthly Cost | Optimization Mechanism |
+| :--- | :--- | :--- | :--- | :--- |
+| **Object Storage (S3)** | 30 TB raw archives / month | $0.023 / GB for 30 days; then Glacier Deep Archive ($0.00099/GB) | **$690 $\to$ $30/mo** | Automated S3 Lifecycle transitions archives to Glacier after 30 days. |
+| **LLM Token Processing** | 40k LLM calls/day (4 agents $\times$ 10k submissions) | $3.00/M input tokens (Sonnet) vs $0.15/M (Haiku) | **$8,400 / month** | **Hierarchical Tiering:** Fast models handle file summaries ($80\%$ tokens); Sonnet evaluates synthesized rubric ($20\%$). |
+| **ECS Fargate Compute** | Baseline 5 workers; burst to 75 workers (4 hrs/day) | $0.04048 / vCPU-hr, Fargate Spot (70% discount) | **$480 / month** | KEDA scales down to baseline outside deadline peaks; utilizes Fargate Spot. |
+| **Aurora PostgreSQL** | Primary `db.r6g.xlarge` + 2 Read Replicas | $0.52 / hr per instance + $0.20/GB storage | **$1,180 / month** | PgBouncer connection pooling eliminates connection memory thrashing. |
+| **ElastiCache Redis** | `cache.m6g.large` (Multi-AZ Cluster) | $0.136 / hr per node | **$195 / month** | Ephemeral TTLs for locks (30s) and job progress caches (24h). |
+| **SQS & Networking** | 2.5M SQS requests/month + ALB bandwidth | $0.40 / M requests + ALB data transfer | **$110 / month** | Batching SQS messages in chunks of 10. |
+| **Total Platform Infrastructure** | Full 10,000 daily submission capacity | Comprehensive Cloud & AI Footprint | **~$11,055 / month** | **Total cost per student evaluation: ~$0.037 (under 4 cents!)** |
+
 5. **Backpressure & Graceful Degradation:**
    * If SQS depth exceeds 500 messages, the system activates graceful degradation: non-urgent static code analysis runs with lower thread priority, and client dashboards display dynamic ETA indicators based on queue depth.
 
