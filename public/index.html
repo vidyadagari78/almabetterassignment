@@ -239,41 +239,23 @@
     <!-- TAB 2: ARCHITECTURE BLUEPRINTS -->
     <!-- ================================================================= -->
     <div id="tab-architecture" class="tab-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+        <p style="color:var(--text-muted);font-size:0.9rem;margin:0">Interactive architectural diagrams generated dynamically via Mermaid.js</p>
+        <a href="/SYSTEM_DESIGN_DOCUMENT.html" target="_blank" class="btn btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+          Open Full Specification (HTML / PDF)
+        </a>
+      </div>
+
       <section class="glass-panel">
         <div class="panel-header">
           <h2 class="panel-title">1. High-Level System Architecture</h2>
         </div>
         <p style="color:var(--text-muted);font-size:0.9rem">Hexagonal Cloud-Native Architecture decoupling CPU-intensive code extraction and static AST parsing from HTTP APIs via Amazon SQS.</p>
         <div class="mermaid-diagram-box">
-          <pre class="mermaid">
-flowchart TB
-    ClientLayer["Client Web & Evaluator Dashboards"] --> CF["AWS CloudFront / WAF"]
-    CF --> ALB["AWS Application Load Balancer"]
-    ALB --> APISvc["API Services (Node.js/Express Auto-scaled)"]
-    
-    APISvc --> S3["Amazon S3 Storage\n(Presigned Direct Uploads)"]
-    APISvc --> Postgres[("PostgreSQL 16 (Multi-AZ)\n+ pgvector & Timescale")]
-    APISvc --> Redis[("Amazon ElastiCache Redis\nIdempotency & Locks")]
-    APISvc --> IngestQueue["Amazon SQS (Ingestion Queue)"]
-
-    IngestQueue --> ExtractWorker["Extraction Workers (Docker Sandbox)"]
-    ExtractWorker --> S3
-    ExtractWorker --> AnalysisQueue["Analysis Queue"]
-
-    AnalysisQueue --> ASTWorker["Static AST & Graph Worker"]
-    ASTWorker --> Postgres
-    ASTWorker --> AIQueue["AI Evaluation Queue"]
-
-    AIQueue --> AIWorker["AI Evaluation Swarm\n(Multi-Agent LangGraph)"]
-    AIWorker --> LiteLLM["LiteLLM Unified Gateway"]
-    LiteLLM --> Claude["Anthropic Claude 3.5 Sonnet"]
-    LiteLLM --> GPT4o["OpenAI GPT-4o (Fallback)"]
-    AIWorker --> Postgres
-    AIWorker --> NotifyQueue["Notification Queue"]
-
-    NotifyQueue --> NotifyWorker["Notification Worker"]
-    NotifyWorker -. WebSockets .-> ClientLayer
-          </pre>
+          <div id="diag-arch-render" style="width:100%;display:flex;justify-content:center;">
+            <div style="color:var(--text-muted);padding:2rem;">Loading architecture diagram...</div>
+          </div>
         </div>
       </section>
 
@@ -283,72 +265,9 @@ flowchart TB
         </div>
         <p style="color:var(--text-muted);font-size:0.9rem">PostgreSQL 16 authoritative schema with <code>pgvector</code> embeddings and optimistic locking for concurrency safety.</p>
         <div class="mermaid-diagram-box">
-          <pre class="mermaid">
-erDiagram
-    USERS ||--o{ SUBMISSIONS : submits
-    USERS ||--o{ HUMAN_REVIEWS : reviews
-    ASSIGNMENTS ||--o{ RUBRICS : specifies
-    RUBRICS ||--|{ RUBRIC_CRITERIA : defines
-    ASSIGNMENTS ||--o{ SUBMISSIONS : receives
-    SUBMISSIONS ||--|{ SUBMISSION_FILES : includes
-    SUBMISSIONS ||--o{ EVALUATION_JOBS : triggers
-    EVALUATION_JOBS ||--o| EVALUATION_RESULTS : yields
-    EVALUATION_RESULTS ||--|{ CRITERIA_SCORES : breaks_down
-    EVALUATION_RESULTS ||--o{ HUMAN_REVIEWS : audited_by
-
-    USERS {
-        uuid id PK
-        varchar email UK
-        varchar role "STUDENT | EVALUATOR | ADMIN"
-    }
-    ASSIGNMENTS {
-        uuid id PK
-        varchar title
-        timestamptz due_date
-    }
-    RUBRICS {
-        uuid id PK
-        varchar name
-        boolean is_published
-    }
-    RUBRIC_CRITERIA {
-        uuid id PK
-        varchar criterion_key
-        decimal weight_percentage
-        decimal max_points
-    }
-    SUBMISSIONS {
-        uuid id PK
-        varchar status
-        varchar idempotency_hash UK
-    }
-    SUBMISSION_FILES {
-        uuid id PK
-        varchar file_path
-        vector embedding_vector "1536 dim"
-    }
-    EVALUATION_JOBS {
-        uuid id PK
-        varchar status
-        int version "Optimistic Locking"
-    }
-    EVALUATION_RESULTS {
-        uuid id PK
-        decimal overall_score
-        decimal confidence_score
-        boolean requires_human_review
-    }
-    CRITERIA_SCORES {
-        uuid id PK
-        decimal score_assigned
-        text reasoning
-    }
-    HUMAN_REVIEWS {
-        uuid id PK
-        varchar decision "APPROVED | OVERRIDDEN"
-        decimal adjusted_score
-    }
-          </pre>
+          <div id="diag-er-render" style="width:100%;display:flex;justify-content:center;">
+            <div style="color:var(--text-muted);padding:2rem;">Loading ER schema diagram...</div>
+          </div>
         </div>
       </section>
     </div>

@@ -38,13 +38,122 @@ const SCENARIOS = {
 
 let currentJobId = null;
 let pollInterval = null;
-let mermaidInitialized = false;
+let diagramsRendered = false;
+
+const DIAGRAM_ARCH = `flowchart TB
+    ClientLayer["Client Web & Evaluator Dashboards"] --> CF["AWS CloudFront / WAF"]
+    CF --> ALB["AWS Application Load Balancer"]
+    ALB --> APISvc["API Services (Node.js/Express Auto-scaled)"]
+    
+    APISvc --> S3["Amazon S3 Storage\\n(Presigned Direct Uploads)"]
+    APISvc --> Postgres[("PostgreSQL 16 (Multi-AZ)\\n+ pgvector & Timescale")]
+    APISvc --> Redis[("Amazon ElastiCache Redis\\nIdempotency & Locks")]
+    APISvc --> IngestQueue["Amazon SQS (Ingestion Queue)"]
+
+    IngestQueue --> ExtractWorker["Extraction Workers (Docker Sandbox)"]
+    ExtractWorker --> S3
+    ExtractWorker --> AnalysisQueue["Analysis Queue"]
+
+    AnalysisQueue --> ASTWorker["Static AST & Graph Worker"]
+    ASTWorker --> Postgres
+    ASTWorker --> AIQueue["AI Evaluation Queue"]
+
+    AIQueue --> AIWorker["AI Evaluation Swarm\\n(Multi-Agent LangGraph)"]
+    AIWorker --> LiteLLM["LiteLLM Unified Gateway"]
+    LiteLLM --> Claude["Anthropic Claude 3.5 Sonnet"]
+    LiteLLM --> GPT4o["OpenAI GPT-4o (Fallback)"]
+    AIWorker --> Postgres
+    AIWorker --> NotifyQueue["Notification Queue"]
+
+    NotifyQueue --> NotifyWorker["Notification Worker"]
+    NotifyWorker -. WebSockets .-> ClientLayer`;
+
+const DIAGRAM_ER = `erDiagram
+    USERS ||--o{ SUBMISSIONS : submits
+    USERS ||--o{ HUMAN_REVIEWS : reviews
+    ASSIGNMENTS ||--o{ RUBRICS : specifies
+    RUBRICS ||--|{ RUBRIC_CRITERIA : defines
+    ASSIGNMENTS ||--o{ SUBMISSIONS : receives
+    SUBMISSIONS ||--|{ SUBMISSION_FILES : includes
+    SUBMISSIONS ||--o{ EVALUATION_JOBS : triggers
+    EVALUATION_JOBS ||--o| EVALUATION_RESULTS : yields
+    EVALUATION_RESULTS ||--|{ CRITERIA_SCORES : breaks_down
+    EVALUATION_RESULTS ||--o{ HUMAN_REVIEWS : audited_by
+
+    USERS {
+        uuid id PK
+        varchar email UK
+        varchar role
+    }
+    ASSIGNMENTS {
+        uuid id PK
+        varchar title
+        timestamptz due_date
+    }
+    RUBRICS {
+        uuid id PK
+        varchar name
+        boolean is_published
+    }
+    RUBRIC_CRITERIA {
+        uuid id PK
+        varchar criterion_key
+        decimal weight_percentage
+        decimal max_points
+    }
+    SUBMISSIONS {
+        uuid id PK
+        varchar status
+        varchar idempotency_hash UK
+    }
+    SUBMISSION_FILES {
+        uuid id PK
+        varchar file_path
+    }
+    EVALUATION_JOBS {
+        uuid id PK
+        varchar status
+        int version
+    }
+    EVALUATION_RESULTS {
+        uuid id PK
+        decimal overall_score
+        decimal confidence_score
+        boolean requires_human_review
+    }
+    CRITERIA_SCORES {
+        uuid id PK
+        decimal score_assigned
+        text reasoning
+    }
+    HUMAN_REVIEWS {
+        uuid id PK
+        varchar decision
+        decimal adjusted_score
+    }`;
 
 document.addEventListener("DOMContentLoaded", () => {
   renderScenarios();
   setupEventListeners();
   loadDefaultScenario("standard");
   fetchLivePrometheusMetrics();
+
+  if (window.mermaid) {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'dark',
+      themeVariables: {
+        darkMode: true,
+        background: '#060911',
+        primaryColor: '#1e293b',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#38bdf8',
+        lineColor: '#94a3b8',
+        secondaryColor: '#334155',
+        tertiaryColor: '#0b1120'
+      }
+    });
+  }
 });
 
 // --- Tab Navigation ---
@@ -55,15 +164,37 @@ function switchTab(tabKey) {
   const targetTab = document.getElementById(`tab-${tabKey}`);
   if (targetTab) targetTab.classList.add("active");
 
-  const activeBtn = Array.from(document.querySelectorAll(".tab-btn")).find(btn => btn.getAttribute("onclick").includes(tabKey));
+  const activeBtn = Array.from(document.querySelectorAll(".tab-btn")).find(btn => btn.getAttribute("onclick") && btn.getAttribute("onclick").includes(tabKey));
   if (activeBtn) activeBtn.classList.add("active");
 
-  if (tabKey === "architecture" && !mermaidInitialized && window.mermaid) {
-    mermaid.initialize({ startOnLoad: true, theme: 'dark' });
-    mermaidInitialized = true;
+  if (tabKey === "architecture") {
+    setTimeout(() => {
+      renderArchitectureDiagrams();
+    }, 60);
   }
   if (tabKey === "telemetry") {
     fetchLivePrometheusMetrics();
+  }
+}
+
+async function renderArchitectureDiagrams() {
+  if (diagramsRendered || !window.mermaid) return;
+
+  const archEl = document.getElementById("diag-arch-render");
+  const erEl = document.getElementById("diag-er-render");
+  if (!archEl || !erEl) return;
+
+  try {
+    const res1 = await mermaid.render("svg_arch_blueprint", DIAGRAM_ARCH);
+    archEl.innerHTML = res1.svg;
+
+    const res2 = await mermaid.render("svg_er_blueprint", DIAGRAM_ER);
+    erEl.innerHTML = res2.svg;
+
+    diagramsRendered = true;
+  } catch (err) {
+    console.error("Mermaid blueprint render error:", err);
+    archEl.innerHTML = `<div class="alert-box alert-danger">Rendering issue: ${err.message}</div>`;
   }
 }
 
