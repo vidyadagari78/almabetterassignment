@@ -18,10 +18,17 @@ This repository contains the complete **System Architecture Design Document**, *
 
 2. **Interactive & Printable Deliverable (HTML / PDF):**  
    🌐 [`SYSTEM_DESIGN_DOCUMENT.html`](./SYSTEM_DESIGN_DOCUMENT.html)  
-   *Beautiful dark-mode web portal with rendered interactive Mermaid diagrams, responsive tables, and print-optimized CSS for direct PDF export (`Ctrl + P`).*
+   *Beautiful dark-mode web portal with rendered interactive Mermaid diagrams, responsive tables, financial cost models, and print-optimized CSS for direct PDF export (`Ctrl + P`).*
 
 3. **Production Reference Implementation (PoC):**  
    💻 Fully functioning Node.js/Express backend service with asynchronous background workers, AST static code analysis, deterministic rubric scoring, prompt injection sanitization, and an interactive Evaluator & Student Web Portal.
+
+4. **Production DevOps & Database Engineering Assets:**  
+   * 🔄 **GitHub Actions CI/CD Pipeline:** [`.github/workflows/ci.yml`](./.github/workflows/ci.yml)
+   * 🗄️ **PostgreSQL 16 Schema Migrations:** [`migrations/001_initial_schema.sql`](./migrations/001_initial_schema.sql)
+   * 🌐 **NGINX Reverse Proxy & Rate Limiter:** [`nginx/nginx.conf`](./nginx/nginx.conf)
+   * 📑 **OpenAPI 3.0 API Specification:** [`src/docs/openapi.json`](./src/docs/openapi.json)
+   * 📊 **Prometheus Telemetry Stream:** Mounted live at `/metrics` via [`src/services/metrics.service.js`](./src/services/metrics.service.js)
 
 ---
 
