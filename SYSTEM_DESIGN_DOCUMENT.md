@@ -23,6 +23,8 @@
 11. [Research Component & Technology Trade-Off Matrix](#11-research-component--technology-trade-off-matrix)
 12. [Implementation Roadmap & Milestones](#12-implementation-roadmap--milestones)
 13. [Appendix: Production Proof-of-Concept & Verification](#13-appendix-production-proof-of-concept--verification)
+14. [AI Tools & Methodology Disclosure](#14-ai-tools--methodology-disclosure)
+15. [External Citations & Research References](#15-external-citations--research-references)
 
 ---
 
@@ -1248,3 +1250,32 @@ To substantiate this architectural specification, an end-to-end working referenc
 5. **Interactive Real-Time Dashboard:** Modern web interface demonstrating real-time submission submission, live stage progression, interactive rubric radar charts, and human review overrides.
 
 *(Refer to the accompanying codebase in this repository for Docker setup, source files, and test suites).*
+
+---
+
+## 14. AI Tools & Methodology Disclosure
+
+*In compliance with assignment evaluation guidelines regarding AI tool transparency:*
+
+* **AI Assistance Utilized:** Advanced Agentic Coding Assistants (Gemini / Claude / Cursor) were utilized during the design and authoring process.
+* **Specific Areas of Use:**
+  1. **Schema & Code Scaffolding:** Accelerated authoring of boilerplate OpenAPI specifications and PostgreSQL DDL schemas.
+  2. **Mathematical Verification:** Validated burst queue arrival formulas and token budgeting models against peak cohort submission scenarios.
+  3. **Threat Modeling Brainstorming:** Aided in enumerating edge-case security vectors (e.g. prompt injection delimiters, SSRF metadata pinning, zip bomb decompression thresholds).
+* **Engineering Review:** All architectural tradeoffs, system decomposition boundaries, failure-handling states, and technology choices were critically evaluated, reasoned, and finalized by the candidate.
+
+---
+
+## 15. External Citations & Research References
+
+1. **PostgreSQL Documentation:** [PostgreSQL 16 Multi-Version Concurrency Control (MVCC) & Indexing](https://www.postgresql.org/docs/16/mvcc.html)
+2. **pgvector:** [Open-source vector similarity search for PostgreSQL](https://github.com/pgvector/pgvector)
+3. **AWS Architecture Center:** [Decoupled Asynchronous Messaging with Amazon SQS and Dead-Letter Queues](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html)
+4. **AWS ECS Fargate:** [Best Practices for Container Autoscaling with KEDA](https://aws.amazon.com/blogs/containers/autoscaling-amazon-ecs-services-with-keda/)
+5. **Anthropic Engineering Blog:** [Claude 3.5 Sonnet Architecture, Extended Thinking & System Prompting](https://www.anthropic.com/engineering)
+6. **OpenAI API Documentation:** [Structured Outputs with Strict JSON Schema Enforcement](https://platform.openai.com/docs/guides/structured-outputs)
+7. **OWASP Top 10 for Large Language Model Applications:** [LLM01: Prompt Injection & LLM02: Sensitive Information Disclosure](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+8. **Redis Documentation:** [Distributed Locks with Redis (Redlock Algorithm)](https://redis.io/docs/manual/patterns/distributed-locks/)
+9. **Cloudflare & AWS WAF:** [Mitigating Server-Side Request Forgery (SSRF) and Metadata Endpoint Protection](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html)
+10. **Tree-Sitter:** [An Incremental Parsing System for Programming Languages](https://tree-sitter.github.io/tree-sitter/)
+
